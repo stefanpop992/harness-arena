@@ -63,13 +63,24 @@ def call_openai(system, messages, max_tokens):
     # completion_tokens includes hidden reasoning tokens -> they count against budget.
     return d["choices"][0]["message"]["content"] or "", u["prompt_tokens"], u["completion_tokens"]
 
+def call_openrouter(system, messages, max_tokens):
+    msgs = ([{"role": "system", "content": system}] if system else []) + messages
+    d = _post("https://openrouter.ai/api/v1/chat/completions",
+              {"Authorization": f"Bearer {API_KEY}", "content-type": "application/json",
+               "X-Title": "homework-13-harness-arena"},
+              {"model": MODEL, "messages": msgs, "max_tokens": max_tokens})
+    if "error" in d:
+        raise RuntimeError(f"openrouter: {d['error']}")
+    u = d["usage"]
+    # completion_tokens includes reasoning tokens -> they count against budget.
+    return d["choices"][0]["message"]["content"] or "", u["prompt_tokens"], u["completion_tokens"]
 
 def call_mock(system, messages, max_tokens):
     inp = (len(system) + sum(len(m["content"]) for m in messages)) // 4
     return "```python\ndef f():\n    return 1\n```", inp, 20
 
 
-CALL = {"anthropic": call_anthropic, "openai": call_openai, "mock": call_mock}[PROVIDER]
+CALL = {"anthropic": call_anthropic, "openai": call_openai, "openrouter": call_openrouter, "mock": call_mock}[PROVIDER]
 
 
 class H(BaseHTTPRequestHandler):

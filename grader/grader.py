@@ -30,7 +30,7 @@ RUNNER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "runner.py")
 
 
 def spec(t):
-    return {"id": t["id"], "entry": t["entry"], "prompt": t["prompt"]}
+    return {"id": t["id"], "entry": t["entry"], "prompt": t["prompt"], "n_tests": len(t["tests"])}
 
 
 def grade(task, code):

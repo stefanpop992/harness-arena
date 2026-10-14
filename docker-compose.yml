@@ -1,26 +1,38 @@
-# Foundation (step 2). Lanes are added in step 3.
-#
 # Network layout - each lane is sealed in its own internal network:
 #   net-claude (internal): lane-claude, meter-claude, grader
 #   net-openai (internal): lane-openai, meter-openai, grader
 #   egress:                meter-claude, meter-openai   (only meters reach the internet)
 # A lane can't reach the internet, the other lane, or the other lane's meter.
+#
+# Everything runs as your own user id so files in ./runs stay readable and writable on the host.
+# Create the run folders first:  mkdir -p runs/claude/meter runs/claude/work runs/openai/meter runs/openai/work runs/grader
 
 x-meter: &meter
   build: ./meter
   restart: unless-stopped
+  user: "${UID:-1000}:${GID:-1000}"
   environment: &meter-env
+    PROVIDER: openrouter
+    API_KEY: ${OPENROUTER_API_KEY:?set OPENROUTER_API_KEY in .env}
     TOKEN_BUDGET: ${TOKEN_BUDGET:-2000000}
     DATA_DIR: /data
+
+x-lane: &lane
+  build: ./lane
+  user: "${UID:-1000}:${GID:-1000}"
+  depends_on: [grader]
+  environment: &lane-env
+    GRADER_URL: http://grader:8090
+    WORK_DIR: /work
+    HOME: /tmp          # git needs a writable home whatever your user id is
+    MAX_GENERATIONS: ${MAX_GENERATIONS:-20}
 
 services:
   meter-claude:
     <<: *meter
     environment:
       <<: *meter-env
-      PROVIDER: anthropic
-      API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env}
-      MODEL: ${CLAUDE_MODEL:-claude-opus-5-5}
+      MODEL: ${CLAUDE_MODEL:-anthropic/claude-opus-5.5}
     volumes: ["./runs/claude/meter:/data"]
     networks: [net-claude, egress]
 
@@ -28,15 +40,14 @@ services:
     <<: *meter
     environment:
       <<: *meter-env
-      PROVIDER: openai
-      API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
-      MODEL: ${OPENAI_MODEL:?set OPENAI_MODEL in .env}
+      MODEL: ${OPENAI_MODEL:-openai/gpt-6.1-sol}
     volumes: ["./runs/openai/meter:/data"]
     networks: [net-openai, egress]
 
   grader:
     build: ./grader
     restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
     environment:
       TASK_DIR: /tasks
       DATA_DIR: /data
@@ -44,6 +55,26 @@ services:
     volumes: ["./tasks:/tasks:ro", "./runs/grader:/data"]
     networks: [net-claude, net-openai]
     ports: ["127.0.0.1:8090:8090"]   # host-only, for the final scorer
+
+  lane-claude:
+    <<: *lane
+    depends_on: [grader, meter-claude]
+    environment:
+      <<: *lane-env
+      LANE: claude
+      METER_URL: http://meter-claude:8080
+    volumes: ["./runs/claude/work:/work"]
+    networks: [net-claude]
+
+  lane-openai:
+    <<: *lane
+    depends_on: [grader, meter-openai]
+    environment:
+      <<: *lane-env
+      LANE: openai
+      METER_URL: http://meter-openai:8080
+    volumes: ["./runs/openai/work:/work"]
+    networks: [net-openai]
 
 networks:
   net-claude: {internal: true}
