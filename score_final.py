@@ -1,24 +1,27 @@
 """Final score: who built the better self-evolving harness? Run on the host after both lanes are done.
 
-  python3 score_final.py
+  python3 score_final.py               # full run: solve the hidden tasks, then grade
+  python3 score_final.py --grade-only  # only grade solutions that were already written
 
 1. Stops the evolution meters and starts fresh "final" meters (new ledger, same budget per lane),
    so the final run isn't starved by whatever evolution spent.
 2. In each lane container, final.py solves the HIDDEN tasks with the seed harness and the
    evolved 'best' harness, REPEATS times each. The container gets task prompts only - no tests,
    no grader password.
-3. Here on the host, every solution is graded against the hidden tests via the grader's admin endpoint.
+3. Here on the host, a local grader (grader.py, plain Python, no Docker) grades every solution
+   against the hidden tests. The grader container sits only on sealed networks, so it can't be
+   reached from the host - and doesn't need to be.
 4. Prints the result and writes runs/results.json and runs/results.md.
 
 Winner: the 'best' harness that passes more hidden tests on average; if equal, fewer tokens on average.
 """
-import json, os, subprocess, sys, urllib.request
+import json, os, secrets, subprocess, sys, time, urllib.request
 from statistics import mean
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RUNS = os.path.join(ROOT, "runs")
 LANES = ["claude", "openai"]
-GRADER = os.environ.get("GRADER_HOST_URL", "http://127.0.0.1:8090")
+GRADER = "http://127.0.0.1:18190"   # local grader started by start_local_grader()
 REPEATS = os.environ.get("REPEATS", "3")
 
 
@@ -31,6 +34,24 @@ def read_env():
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip()
     return env
+
+
+def start_local_grader():
+    """Start grader.py on the host with a one-off admin token. Returns (process, token)."""
+    token = secrets.token_hex(16)
+    data = os.path.join(RUNS, "grader-final")
+    os.makedirs(data, exist_ok=True)
+    proc = subprocess.Popen([sys.executable, os.path.join(ROOT, "grader", "grader.py")],
+                            env={**os.environ, "TASK_DIR": os.path.join(ROOT, "tasks"), "DATA_DIR": data,
+                                 "GRADER_ADMIN_TOKEN": token, "PORT": GRADER.rsplit(":", 1)[1]})
+    for _ in range(100):
+        try:
+            urllib.request.urlopen(f"{GRADER}/tasks", timeout=1)
+            return proc, token
+        except Exception:
+            time.sleep(0.1)
+    proc.terminate()
+    sys.exit("local grader did not start")
 
 
 def admin_grade(token, task_id, code):
@@ -110,27 +131,35 @@ def compose(*args, env=None):
 
 def main():
     env = read_env()
-    token = env.get("GRADER_ADMIN_TOKEN", "")
     with open(os.path.join(ROOT, "tasks", "heldout.json")) as f:
         tasks = json.load(f)
-    for lane in LANES:
-        if not os.path.exists(os.path.join(RUNS, lane, "work", "state", "DONE")):
-            sys.exit(f"lane '{lane}' hasn't finished evolving yet (no runs/{lane}/work/state/DONE)")
 
-    phase = {"PHASE": "final", "REPEATS": REPEATS}
-    compose("down")
-    for lane in LANES:
-        os.makedirs(os.path.join(RUNS, lane, "meter-final"), exist_ok=True)
-        specs = [{"id": t["id"], "entry": t["entry"], "prompt": t["prompt"], "n_tests": len(t["tests"])} for t in tasks]
-        with open(os.path.join(RUNS, lane, "work", "final_tasks.json"), "w") as f:
-            json.dump(specs, f)
-        compose("run", "--rm", "-e", f"REPEATS={REPEATS}", f"lane-{lane}", "python", "-u", "final.py", env=phase)
+    if "--grade-only" not in sys.argv:
+        for lane in LANES:
+            if not os.path.exists(os.path.join(RUNS, lane, "work", "state", "DONE")):
+                sys.exit(f"lane '{lane}' hasn't finished evolving yet (no runs/{lane}/work/state/DONE)")
+        phase = {"PHASE": "final", "REPEATS": REPEATS}
+        compose("down")
+        for lane in LANES:
+            os.makedirs(os.path.join(RUNS, lane, "meter-final"), exist_ok=True)
+            specs = [{"id": t["id"], "entry": t["entry"], "prompt": t["prompt"], "n_tests": len(t["tests"])}
+                     for t in tasks]
+            with open(os.path.join(RUNS, lane, "work", "final_tasks.json"), "w") as f:
+                json.dump(specs, f)
+            compose("run", "--rm", "-e", f"REPEATS={REPEATS}", f"lane-{lane}", "python", "-u", "final.py", env=phase)
+        compose("down", env=phase)
 
-    results = {}
-    for lane in LANES:
-        with open(os.path.join(RUNS, lane, "work", "final_solutions.json")) as f:
-            results[lane] = grade_lane(token, json.load(f), tasks)
-    compose("down", env=phase)
+    proc, token = start_local_grader()
+    try:
+        results = {}
+        for lane in LANES:
+            path = os.path.join(RUNS, lane, "work", "final_solutions.json")
+            if not os.path.exists(path):
+                sys.exit(f"no solutions for '{lane}' yet ({path}) - run without --grade-only first")
+            with open(path) as f:
+                results[lane] = grade_lane(token, json.load(f), tasks)
+    finally:
+        proc.terminate()
 
     models = {"claude": env.get("CLAUDE_MODEL", "?"), "openai": env.get("OPENAI_MODEL", "?")}
     md = report(results, models)

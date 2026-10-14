@@ -57,7 +57,6 @@ services:
       GRADER_ADMIN_TOKEN: ${GRADER_ADMIN_TOKEN:?set GRADER_ADMIN_TOKEN in .env}
     volumes: ["./tasks:/tasks:ro", "./runs/grader:/data"]
     networks: [net-claude, net-openai]
-    ports: ["127.0.0.1:8090:8090"]   # host-only, for the final scorer
 
   lane-claude:
     <<: *lane
