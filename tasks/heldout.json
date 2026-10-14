@@ -1,0 +1,260 @@
+[
+ {
+  "id": "int_to_roman",
+  "entry": "int_to_roman",
+  "prompt": "Write `int_to_roman(n: int) -> str` returning the canonical uppercase Roman numeral for 1..3999. Raise ValueError outside that range.",
+  "tests": [
+   {
+    "name": "three",
+    "code": "_r = int_to_roman(3)\nassert _r == 'III', f'got {_r!r}'"
+   },
+   {
+    "name": "four",
+    "code": "_r = int_to_roman(4)\nassert _r == 'IV', f'got {_r!r}'"
+   },
+   {
+    "name": "nine",
+    "code": "_r = int_to_roman(9)\nassert _r == 'IX', f'got {_r!r}'"
+   },
+   {
+    "name": "mixed",
+    "code": "_r = int_to_roman(58)\nassert _r == 'LVIII', f'got {_r!r}'"
+   },
+   {
+    "name": "subtractive",
+    "code": "_r = int_to_roman(1994)\nassert _r == 'MCMXCIV', f'got {_r!r}'"
+   },
+   {
+    "name": "max",
+    "code": "_r = int_to_roman(3999)\nassert _r == 'MMMCMXCIX', f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_zero",
+    "code": "try:\n    _r = int_to_roman(0)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_4000",
+    "code": "try:\n    _r = int_to_roman(4000)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "calc",
+  "entry": "calc",
+  "prompt": "Write `calc(expr: str) -> float` evaluating arithmetic with + - * /, parentheses, unary + and -, integers and decimals, and arbitrary whitespace. Usual precedence, left-associative. Raise ValueError for malformed expressions and ZeroDivisionError for division by zero.",
+  "tests": [
+   {
+    "name": "precedence",
+    "code": "_r = calc('1 + 2 * 3')\nassert abs(_r - 7) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "parens",
+    "code": "_r = calc('(1 + 2) * 3')\nassert abs(_r - 9) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "unary_minus_group",
+    "code": "_r = calc('-(2 + 3)')\nassert abs(_r - -5) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "unary_after_op",
+    "code": "_r = calc('2 * -3')\nassert abs(_r - -6) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "true_division",
+    "code": "_r = calc('10 / 4')\nassert abs(_r - 2.5) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "left_assoc_sub",
+    "code": "_r = calc('2 - 3 - 4')\nassert abs(_r - -5) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "left_assoc_div",
+    "code": "_r = calc('8 / 4 / 2')\nassert abs(_r - 1) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "decimal",
+    "code": "_r = calc('1.5 * 2')\nassert abs(_r - 3) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "double_unary",
+    "code": "_r = calc('--1')\nassert abs(_r - 1) < 1e-9, f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_trailing_op",
+    "code": "try:\n    _r = calc('1 +')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_unclosed_paren",
+    "code": "try:\n    _r = calc('(1')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_adjacent_numbers",
+    "code": "try:\n    _r = calc('1 2')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_empty",
+    "code": "try:\n    _r = calc('')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "division_by_zero",
+    "code": "try:\n    _r = calc('1/0')\nexcept ZeroDivisionError:\n    pass\nelse:\n    raise AssertionError(f'expected ZeroDivisionError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "topo_sort",
+  "entry": "topo_sort",
+  "prompt": "Write `topo_sort(deps: dict[str, list[str]]) -> list[str]`. `deps[x]` lists nodes that must come before x. Nodes that appear only as dependencies are included too. When several nodes are available, take the lexicographically smallest first. Raise ValueError if there is a cycle.",
+  "tests": [
+   {
+    "name": "chain",
+    "code": "_r = topo_sort({'b':['a'],'c':['b']})\nassert _r == ['a', 'b', 'c'], f'got {_r!r}'"
+   },
+   {
+    "name": "independent_sorted",
+    "code": "_r = topo_sort({'x':[],'a':[]})\nassert _r == ['a', 'x'], f'got {_r!r}'"
+   },
+   {
+    "name": "diamond",
+    "code": "_r = topo_sort({'d':['b','c'],'b':['a'],'c':['a']})\nassert _r == ['a', 'b', 'c', 'd'], f'got {_r!r}'"
+   },
+   {
+    "name": "dependency_only_node",
+    "code": "_r = topo_sort({'z':['y'],'b':[]})\nassert _r == ['b', 'y', 'z'], f'got {_r!r}'"
+   },
+   {
+    "name": "empty",
+    "code": "_r = topo_sort({})\nassert _r == [], f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_cycle",
+    "code": "try:\n    _r = topo_sort({'a':['b'],'b':['a']})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_self_loop",
+    "code": "try:\n    _r = topo_sort({'a':['a']})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "normalize_path",
+  "entry": "normalize_path",
+  "prompt": "Write `normalize_path(p: str) -> str` normalising a POSIX path: collapse repeated slashes (including a leading '//'), drop '.', resolve '..' (at the root of an absolute path it stays at root; leading '..' in a relative path is kept), drop a trailing slash except for '/'. An empty relative result is '.'.",
+  "tests": [
+   {
+    "name": "parent",
+    "code": "_r = normalize_path('/a/b/../c')\nassert _r == '/a/c', f'got {_r!r}'"
+   },
+   {
+    "name": "dots_and_slashes",
+    "code": "_r = normalize_path('a/./b//c/')\nassert _r == 'a/b/c', f'got {_r!r}'"
+   },
+   {
+    "name": "parent_at_root",
+    "code": "_r = normalize_path('/../x')\nassert _r == '/x', f'got {_r!r}'"
+   },
+   {
+    "name": "leading_parents_kept",
+    "code": "_r = normalize_path('../../a')\nassert _r == '../../a', f'got {_r!r}'"
+   },
+   {
+    "name": "climb_past_start",
+    "code": "_r = normalize_path('a/../..')\nassert _r == '..', f'got {_r!r}'"
+   },
+   {
+    "name": "cancel_to_dot",
+    "code": "_r = normalize_path('a/..')\nassert _r == '.', f'got {_r!r}'"
+   },
+   {
+    "name": "leading_double_slash",
+    "code": "_r = normalize_path('//a//b')\nassert _r == '/a/b', f'got {_r!r}'"
+   },
+   {
+    "name": "root",
+    "code": "_r = normalize_path('/')\nassert _r == '/', f'got {_r!r}'"
+   },
+   {
+    "name": "empty",
+    "code": "_r = normalize_path('')\nassert _r == '.', f'got {_r!r}'"
+   }
+  ]
+ },
+ {
+  "id": "parse_csv_line",
+  "entry": "parse_csv_line",
+  "prompt": "Write `parse_csv_line(line: str) -> list[str]` splitting one CSV line on commas. A field may be wrapped in double quotes; inside quotes commas are literal and '\"\"' is an escaped quote. Unquoted fields are taken literally (no trimming). After a closing quote only a comma or end of line may follow, otherwise raise ValueError; an unterminated quote also raises ValueError. An empty line is one empty field.",
+  "tests": [
+   {
+    "name": "plain",
+    "code": "_r = parse_csv_line('a,b,c')\nassert _r == ['a', 'b', 'c'], f'got {_r!r}'"
+   },
+   {
+    "name": "quoted_comma",
+    "code": "_r = parse_csv_line('\"a,b\",c')\nassert _r == ['a,b', 'c'], f'got {_r!r}'"
+   },
+   {
+    "name": "escaped_quotes",
+    "code": "_r = parse_csv_line('\"say \"\"hi\"\"\",x')\nassert _r == ['say \"hi\"', 'x'], f'got {_r!r}'"
+   },
+   {
+    "name": "empty_middle",
+    "code": "_r = parse_csv_line('a,,c')\nassert _r == ['a', '', 'c'], f'got {_r!r}'"
+   },
+   {
+    "name": "empty_line",
+    "code": "_r = parse_csv_line('')\nassert _r == [''], f'got {_r!r}'"
+   },
+   {
+    "name": "trailing_comma",
+    "code": "_r = parse_csv_line('a,')\nassert _r == ['a', ''], f'got {_r!r}'"
+   },
+   {
+    "name": "no_trimming",
+    "code": "_r = parse_csv_line(' a , b ')\nassert _r == [' a ', ' b '], f'got {_r!r}'"
+   },
+   {
+    "name": "empty_quoted",
+    "code": "_r = parse_csv_line('\"\"')\nassert _r == [''], f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_unterminated",
+    "code": "try:\n    _r = parse_csv_line('\"abc')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_text_after_quote",
+    "code": "try:\n    _r = parse_csv_line('\"a\"b,c')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "next_business_day",
+  "entry": "next_business_day",
+  "prompt": "Write `next_business_day(date: str, holidays: list[str] = ()) -> str`. Dates are 'YYYY-MM-DD'. Return the first day strictly after `date` that is Monday-Friday and not in `holidays`. Raise ValueError for an invalid date.",
+  "tests": [
+   {
+    "name": "midweek",
+    "code": "_r = next_business_day('2026-10-14')\nassert _r == '2026-10-15', f'got {_r!r}'"
+   },
+   {
+    "name": "friday_to_monday",
+    "code": "_r = next_business_day('2026-10-16')\nassert _r == '2026-10-19', f'got {_r!r}'"
+   },
+   {
+    "name": "saturday",
+    "code": "_r = next_business_day('2026-10-17')\nassert _r == '2026-10-19', f'got {_r!r}'"
+   },
+   {
+    "name": "holiday_then_weekend",
+    "code": "_r = next_business_day('2026-12-24', ['2026-12-25'])\nassert _r == '2026-12-28', f'got {_r!r}'"
+   },
+   {
+    "name": "year_boundary",
+    "code": "_r = next_business_day('2026-12-31', ['2027-01-01'])\nassert _r == '2027-01-04', f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_invalid_date",
+    "code": "try:\n    _r = next_business_day('2026-02-30')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ }
+]

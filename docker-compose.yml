@@ -1,0 +1,51 @@
+# Foundation (step 2). Lanes are added in step 3.
+#
+# Network layout - each lane is sealed in its own internal network:
+#   net-claude (internal): lane-claude, meter-claude, grader
+#   net-openai (internal): lane-openai, meter-openai, grader
+#   egress:                meter-claude, meter-openai   (only meters reach the internet)
+# A lane can't reach the internet, the other lane, or the other lane's meter.
+
+x-meter: &meter
+  build: ./meter
+  restart: unless-stopped
+  environment: &meter-env
+    TOKEN_BUDGET: ${TOKEN_BUDGET:-2000000}
+    DATA_DIR: /data
+
+services:
+  meter-claude:
+    <<: *meter
+    environment:
+      <<: *meter-env
+      PROVIDER: anthropic
+      API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY in .env}
+      MODEL: ${CLAUDE_MODEL:-claude-opus-5-5}
+    volumes: ["./runs/claude/meter:/data"]
+    networks: [net-claude, egress]
+
+  meter-openai:
+    <<: *meter
+    environment:
+      <<: *meter-env
+      PROVIDER: openai
+      API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in .env}
+      MODEL: ${OPENAI_MODEL:?set OPENAI_MODEL in .env}
+    volumes: ["./runs/openai/meter:/data"]
+    networks: [net-openai, egress]
+
+  grader:
+    build: ./grader
+    restart: unless-stopped
+    environment:
+      TASK_DIR: /tasks
+      DATA_DIR: /data
+      GRADER_ADMIN_TOKEN: ${GRADER_ADMIN_TOKEN:?set GRADER_ADMIN_TOKEN in .env}
+    volumes: ["./tasks:/tasks:ro", "./runs/grader:/data"]
+    networks: [net-claude, net-openai]
+    ports: ["127.0.0.1:8090:8090"]   # host-only, for the final scorer
+
+networks:
+  net-claude: {internal: true}
+  net-openai: {internal: true}
+  egress: {}

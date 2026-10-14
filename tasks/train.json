@@ -1,0 +1,252 @@
+[
+ {
+  "id": "roman_to_int",
+  "entry": "roman_to_int",
+  "prompt": "Write `roman_to_int(s: str) -> int` converting an uppercase Roman numeral (1..3999) to an int. Raise ValueError for anything that is not the canonical numeral: empty string, lowercase, invalid characters, or non-canonical forms such as 'IIII', 'IC', 'VX'.",
+  "tests": [
+   {
+    "name": "basic",
+    "code": "_r = roman_to_int('III')\nassert _r == 3, f'got {_r!r}'"
+   },
+   {
+    "name": "mixed",
+    "code": "_r = roman_to_int('LVIII')\nassert _r == 58, f'got {_r!r}'"
+   },
+   {
+    "name": "subtractive",
+    "code": "_r = roman_to_int('MCMXCIV')\nassert _r == 1994, f'got {_r!r}'"
+   },
+   {
+    "name": "max",
+    "code": "_r = roman_to_int('MMMCMXCIX')\nassert _r == 3999, f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_IIII",
+    "code": "try:\n    _r = roman_to_int('IIII')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_IC",
+    "code": "try:\n    _r = roman_to_int('IC')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_empty",
+    "code": "try:\n    _r = roman_to_int('')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_lowercase",
+    "code": "try:\n    _r = roman_to_int('mcm')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "parse_duration",
+  "entry": "parse_duration",
+  "prompt": "Write `parse_duration(s: str) -> int` returning total seconds. Input is one or more `<int><unit>` parts with units d, h, m, s, appearing in that order, each at most once, no spaces, e.g. '1h30m', '2d', '1d2h3m4s'. Raise ValueError for anything else (empty, repeated or out-of-order units, decimals, missing number or unit, spaces).",
+  "tests": [
+   {
+    "name": "hours_minutes",
+    "code": "_r = parse_duration('1h30m')\nassert _r == 5400, f'got {_r!r}'"
+   },
+   {
+    "name": "seconds_only",
+    "code": "_r = parse_duration('90s')\nassert _r == 90, f'got {_r!r}'"
+   },
+   {
+    "name": "days",
+    "code": "_r = parse_duration('2d')\nassert _r == 172800, f'got {_r!r}'"
+   },
+   {
+    "name": "all_units",
+    "code": "_r = parse_duration('1d2h3m4s')\nassert _r == 93784, f'got {_r!r}'"
+   },
+   {
+    "name": "zero",
+    "code": "_r = parse_duration('0s')\nassert _r == 0, f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_empty",
+    "code": "try:\n    _r = parse_duration('')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_repeated_unit",
+    "code": "try:\n    _r = parse_duration('1h1h')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_out_of_order",
+    "code": "try:\n    _r = parse_duration('30m1h')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_decimal",
+    "code": "try:\n    _r = parse_duration('1.5h')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_missing_number",
+    "code": "try:\n    _r = parse_duration('h')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_missing_unit",
+    "code": "try:\n    _r = parse_duration('10')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_space",
+    "code": "try:\n    _r = parse_duration('1 h')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "merge_intervals",
+  "entry": "merge_intervals",
+  "prompt": "Write `merge_intervals(intervals: list[list[int]]) -> list[list[int]]`. Merge overlapping intervals and intervals that touch (end == next start). Return them sorted by start. Do not mutate the input.",
+  "tests": [
+   {
+    "name": "classic",
+    "code": "_r = merge_intervals([[1,3],[2,6],[8,10],[15,18]])\nassert _r == [[1, 6], [8, 10], [15, 18]], f'got {_r!r}'"
+   },
+   {
+    "name": "touching_merge",
+    "code": "_r = merge_intervals([[1,4],[4,5]])\nassert _r == [[1, 5]], f'got {_r!r}'"
+   },
+   {
+    "name": "unsorted_input",
+    "code": "_r = merge_intervals([[5,6],[1,2]])\nassert _r == [[1, 2], [5, 6]], f'got {_r!r}'"
+   },
+   {
+    "name": "contained",
+    "code": "_r = merge_intervals([[1,10],[2,3]])\nassert _r == [[1, 10]], f'got {_r!r}'"
+   },
+   {
+    "name": "empty",
+    "code": "_r = merge_intervals([])\nassert _r == [], f'got {_r!r}'"
+   },
+   {
+    "name": "does_not_mutate_input",
+    "code": "x = [[3,4],[1,2]]\nmerge_intervals(x)\nassert x == [[3,4],[1,2]], f'input became {x!r}'"
+   }
+  ]
+ },
+ {
+  "id": "eval_rpn",
+  "entry": "eval_rpn",
+  "prompt": "Write `eval_rpn(tokens: list[str]) -> int` evaluating integer Reverse Polish Notation with + - * /. Division truncates toward zero. Raise ValueError for malformed input (empty, too few operands, leftover operands). Division by zero raises ZeroDivisionError.",
+  "tests": [
+   {
+    "name": "basic",
+    "code": "_r = eval_rpn(['2','1','+','3','*'])\nassert _r == 9, f'got {_r!r}'"
+   },
+   {
+    "name": "division",
+    "code": "_r = eval_rpn(['4','13','5','/','+'])\nassert _r == 6, f'got {_r!r}'"
+   },
+   {
+    "name": "negative_division_truncates_toward_zero",
+    "code": "_r = eval_rpn(['-7','2','/'])\nassert _r == -3, f'got {_r!r}'"
+   },
+   {
+    "name": "negative_divisor_truncates_toward_zero",
+    "code": "_r = eval_rpn(['7','-2','/'])\nassert _r == -3, f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_too_few_operands",
+    "code": "try:\n    _r = eval_rpn(['1','+'])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_leftover_operands",
+    "code": "try:\n    _r = eval_rpn(['1','2'])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_empty",
+    "code": "try:\n    _r = eval_rpn([])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "division_by_zero",
+    "code": "try:\n    _r = eval_rpn(['1','0','/'])\nexcept ZeroDivisionError:\n    pass\nelse:\n    raise AssertionError(f'expected ZeroDivisionError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "wrap_text",
+  "entry": "wrap_text",
+  "prompt": "Write `wrap_text(text: str, width: int) -> list[str]`. Split on any whitespace, then greedily pack words into lines joined by single spaces, each line at most `width` characters. A word longer than `width` starts on a new line (if the current line is non-empty) and is cut into `width`-sized pieces; its last piece stays open so following words can join it. Empty or whitespace-only text returns []. Raise ValueError if width < 1.",
+  "tests": [
+   {
+    "name": "basic",
+    "code": "_r = wrap_text('the quick brown fox', 10)\nassert _r == ['the quick', 'brown fox'], f'got {_r!r}'"
+   },
+   {
+    "name": "width_one",
+    "code": "_r = wrap_text('a b c', 1)\nassert _r == ['a', 'b', 'c'], f'got {_r!r}'"
+   },
+   {
+    "name": "long_word_split",
+    "code": "_r = wrap_text('abcdefghij', 4)\nassert _r == ['abcd', 'efgh', 'ij'], f'got {_r!r}'"
+   },
+   {
+    "name": "long_word_tail_joins_next",
+    "code": "_r = wrap_text('hi abcdefghij x', 4)\nassert _r == ['hi', 'abcd', 'efgh', 'ij x'], f'got {_r!r}'"
+   },
+   {
+    "name": "collapses_whitespace",
+    "code": "_r = wrap_text('  lots   of\\n\\nspace ', 20)\nassert _r == ['lots of space'], f'got {_r!r}'"
+   },
+   {
+    "name": "empty",
+    "code": "_r = wrap_text('', 5)\nassert _r == [], f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_zero_width",
+    "code": "try:\n    _r = wrap_text('a', 0)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ },
+ {
+  "id": "semver_compare",
+  "entry": "semver_compare",
+  "prompt": "Write `semver_compare(a: str, b: str) -> int` returning -1, 0 or 1 by Semantic Versioning 2.0.0 precedence: MAJOR.MINOR.PATCH, optional -prerelease, optional +build (ignored). A prerelease is lower than the release. Prerelease identifiers compare left to right: numeric ones numerically, others lexically in ASCII, numeric lower than alphanumeric, and a shorter identifier list is lower when all preceding identifiers are equal. Raise ValueError for invalid versions (missing parts, leading zeros in numeric parts).",
+  "tests": [
+   {
+    "name": "major",
+    "code": "_r = semver_compare('1.0.0','2.0.0')\nassert _r == -1, f'got {_r!r}'"
+   },
+   {
+    "name": "minor_beats_patch",
+    "code": "_r = semver_compare('2.1.0','2.0.9')\nassert _r == 1, f'got {_r!r}'"
+   },
+   {
+    "name": "numeric_not_lexical",
+    "code": "_r = semver_compare('1.10.0','1.9.0')\nassert _r == 1, f'got {_r!r}'"
+   },
+   {
+    "name": "prerelease_below_release",
+    "code": "_r = semver_compare('1.0.0-alpha','1.0.0')\nassert _r == -1, f'got {_r!r}'"
+   },
+   {
+    "name": "shorter_prerelease_lower",
+    "code": "_r = semver_compare('1.0.0-alpha','1.0.0-alpha.1')\nassert _r == -1, f'got {_r!r}'"
+   },
+   {
+    "name": "numeric_below_alnum",
+    "code": "_r = semver_compare('1.0.0-alpha.1','1.0.0-alpha.beta')\nassert _r == -1, f'got {_r!r}'"
+   },
+   {
+    "name": "prerelease_numeric_compare",
+    "code": "_r = semver_compare('1.0.0-beta.2','1.0.0-beta.11')\nassert _r == -1, f'got {_r!r}'"
+   },
+   {
+    "name": "prerelease_lexical_compare",
+    "code": "_r = semver_compare('1.0.0-rc.1','1.0.0-beta.11')\nassert _r == 1, f'got {_r!r}'"
+   },
+   {
+    "name": "build_ignored",
+    "code": "_r = semver_compare('1.0.0+build.5','1.0.0+other')\nassert _r == 0, f'got {_r!r}'"
+   },
+   {
+    "name": "rejects_missing_patch",
+    "code": "try:\n    _r = semver_compare('1.0','1.0.0')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   },
+   {
+    "name": "rejects_leading_zero",
+    "code": "try:\n    _r = semver_compare('01.0.0','1.0.0')\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(f'expected ValueError, got {_r!r}')"
+   }
+  ]
+ }
+]
