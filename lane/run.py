@@ -26,6 +26,7 @@ TASK_TIMEOUT = int(os.environ.get("TASK_TIMEOUT", "600"))
 HARNESS = os.path.join(WORK, "harness")
 STATE = os.path.join(WORK, "state")
 FILE_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+MIN_SAVING = float(os.environ.get("MIN_SAVING", "0.15"))
 
 
 def log(msg):
@@ -87,8 +88,8 @@ def score(tasks):
 
 
 def better(passed, tokens, best):
-    """Correctness first; at equal correctness, fewer tokens wins."""
-    return passed > best["passed"] or (passed == best["passed"] and tokens < best["tokens"])
+    """Correctness first; at equal correctness, clearly fewer tokens wins (small savings are noise)."""
+    return passed > best["passed"] or (passed == best["passed"] and tokens <= best["tokens"] * (1 - MIN_SAVING))
 
 
 def read_harness():
@@ -106,7 +107,7 @@ EVOLVE_SYSTEM = """You are improving an AI coding harness: the code and prompts 
 Objective, in priority order:
   1. pass as many tests as possible;
   2. at equal correctness, spend as few tokens as possible solving the tasks.
-A new version is KEPT only if it passes more tests, or the same number of tests with fewer tokens. Otherwise it is REVERTED. Token counts vary a little between runs.
+A new version is KEPT only if it passes more tests, or the same number of tests with at least {pct}% fewer tokens. Otherwise it is REVERTED. Token counts vary about 10% between runs of the same harness, so small savings don't count; aim for structural savings.
 
 The harness is scored on TRAIN tasks you can see results for. The final grade comes from different, HIDDEN tasks of a similar kind (precise specs, tricky edge cases). So hardcoding train answers is worthless; only general improvements count.
 
@@ -121,7 +122,7 @@ Reply with a one-paragraph plan, then every file you want to create or replace, 
 === FILE: name.py ===
 <full file content>
 === END ===
-Files you don't include stay as they are."""
+Files you don't include stay as they are.""".replace("{pct}", str(round(MIN_SAVING * 100)))
 
 
 def evolve_prompt(files, results, history, budget_left):

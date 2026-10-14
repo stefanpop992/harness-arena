@@ -7,9 +7,10 @@ The fake meter charges tokens by text length, so a shorter prompt costs fewer to
   gen 1  harness with a syntax error         -> must be DISCARDED
   gen 2  prompt with EDGE CASES              -> 52/52                   -> must be KEPT (more correct)
   gen 3  prompt without it                   -> 0/52                    -> must be REVERTED (less correct)
-  gen 4  SHORTER prompt with EDGE CASES      -> 52/52, fewer tokens     -> must be KEPT (cheaper)
-  gen 5  much LONGER prompt with EDGE CASES  -> 52/52, more tokens      -> must be REVERTED (dearer)
-  gen 6  budget runs out                     -> must stop cleanly on the gen 4 harness
+  gen 4  SLIGHTLY shorter prompt            -> 52/52, a few % fewer    -> must be REVERTED (saving is noise)
+  gen 5  MUCH shorter prompt                 -> 52/52, >15% fewer       -> must be KEPT (clearly cheaper)
+  gen 6  much LONGER prompt with EDGE CASES  -> 52/52, more tokens      -> must be REVERTED (dearer)
+  gen 7  budget runs out                     -> must stop cleanly on the gen 5 harness
 """
 import json, os, subprocess, sys, tempfile, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -21,9 +22,10 @@ from reference_solutions import REF  # noqa: E402
 state = {"spent": 0, "evolves": 0}
 BUDGET = 10_000_000
 
-GOOD_PROMPT = "You are a careful Python programmer. Check EDGE CASES, every single one. Reply with one ```python block."
+GOOD_PROMPT = "You are a careful Python programmer. Check EDGE CASES. Reply with one ```python block.\n" + "Be careful. " * 40
 BAD_PROMPT = "You are a Python programmer. Reply with one ```python block."
-SHORT_PROMPT = "Check EDGE CASES. One ```python block."
+SLIGHTLY_SHORTER = "You are a careful Python programmer. Check EDGE CASES. Reply with one ```python block.\n" + "Be careful. " * 34
+SHORT_PROMPT = "EDGE CASES"
 LONG_PROMPT = GOOD_PROMPT + "\n" + "Be thorough. " * 300
 
 
@@ -33,7 +35,7 @@ def fake_model(system, user):
         n = state["evolves"]
         if n == 1:
             return "Plan: break it.\n=== FILE: harness.py ===\ndef solve(task, llm)\n    return ''\n=== END ==="
-        prompt = {2: GOOD_PROMPT, 3: BAD_PROMPT, 4: SHORT_PROMPT, 5: LONG_PROMPT}[n]
+        prompt = {2: GOOD_PROMPT, 3: BAD_PROMPT, 4: SLIGHTLY_SHORTER, 5: SHORT_PROMPT, 6: LONG_PROMPT}[n]
         return f"Plan: try prompt variant {n}.\n=== FILE: prompt.md ===\n{prompt}\n=== END ==="
     entry = user.split("named `")[1].split("`")[0]
     if "EDGE CASES" in system:
@@ -56,8 +58,8 @@ class Meter(BaseHTTPRequestHandler):
     def do_POST(self):
         req = json.loads(self.rfile.read(int(self.headers["content-length"])))
         system, user = req["system"], req["messages"][0]["content"]
-        if system.startswith("You are improving") and state["evolves"] >= 5:
-            return self._send(402, {"error": "budget_exhausted"})  # budget "runs out" before evolve 6
+        if system.startswith("You are improving") and state["evolves"] >= 6:
+            return self._send(402, {"error": "budget_exhausted"})  # budget "runs out" before evolve 7
         text = fake_model(system, user)
         inp, out = (len(system) + len(user)) // 4, len(text) // 4
         state["spent"] += inp + out
@@ -100,15 +102,18 @@ def main():
         ("gen 1 broken harness discarded", by_gen[1]["passed"] is None and not by_gen[1]["kept"]),
         ("gen 2 more correct -> kept", by_gen[2]["passed"] == 52 and by_gen[2]["kept"]),
         ("gen 3 less correct -> reverted", by_gen[3]["passed"] == 0 and not by_gen[3]["kept"]),
-        ("gen 4 equally correct, cheaper -> kept",
-         by_gen[4]["passed"] == 52 and by_gen[4]["score_tokens"] < by_gen[2]["score_tokens"] and by_gen[4]["kept"]),
-        ("gen 5 equally correct, dearer -> reverted",
-         by_gen[5]["passed"] == 52 and by_gen[5]["score_tokens"] > by_gen[4]["score_tokens"] and not by_gen[5]["kept"]),
-        ("final harness is the gen 4 version", prompt.strip() == SHORT_PROMPT),
-        ("'best' tag points at gen 4", best_tag == by_gen[4]["commit"]),
+        ("gen 4 a little cheaper (<15%) -> reverted as noise",
+         by_gen[4]["passed"] == 52 and by_gen[4]["score_tokens"] < by_gen[2]["score_tokens"]
+         and by_gen[4]["score_tokens"] > by_gen[2]["score_tokens"] * 0.85 and not by_gen[4]["kept"]),
+        ("gen 5 clearly cheaper (>=15%) -> kept",
+         by_gen[5]["passed"] == 52 and by_gen[5]["score_tokens"] <= by_gen[2]["score_tokens"] * 0.85 and by_gen[5]["kept"]),
+        ("gen 6 equally correct, dearer -> reverted",
+         by_gen[6]["passed"] == 52 and by_gen[6]["score_tokens"] > by_gen[5]["score_tokens"] and not by_gen[6]["kept"]),
+        ("final harness is the gen 5 version", prompt.strip() == SHORT_PROMPT),
+        ("'best' tag points at gen 5", best_tag == by_gen[5]["commit"]),
         ("stopped on budget, DONE written", os.path.exists(os.path.join(work, "state", "DONE"))
          and "budget exhausted" in p.stdout),
-        ("every candidate is in git history", gitlog.count("candidate") == 4),
+        ("every candidate is in git history", gitlog.count("candidate") == 5),
     ]
     print("tokens to solve the 6 tasks, per gen:",
           {g: h.get("score_tokens") for g, h in by_gen.items()})
