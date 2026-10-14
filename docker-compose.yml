@@ -5,7 +5,10 @@
 # A lane can't reach the internet, the other lane, or the other lane's meter.
 #
 # Everything runs as your own user id so files in ./runs stay readable and writable on the host.
-# Create the run folders first:  mkdir -p runs/claude/meter runs/claude/work runs/openai/meter runs/openai/work runs/grader
+# Create the run folders first:
+#   mkdir -p runs/claude/meter-evolve runs/claude/work runs/openai/meter-evolve runs/openai/work runs/grader
+# PHASE picks the meter's ledger folder: "evolve" (default) or "final" (score_final.py sets it),
+# so the final run on the hidden tasks starts with a fresh budget.
 
 x-meter: &meter
   build: ./meter
@@ -33,7 +36,7 @@ services:
     environment:
       <<: *meter-env
       MODEL: ${CLAUDE_MODEL:-anthropic/claude-opus-5.5}
-    volumes: ["./runs/claude/meter:/data"]
+    volumes: ["./runs/claude/meter-${PHASE:-evolve}:/data"]
     networks: [net-claude, egress]
 
   meter-openai:
@@ -41,7 +44,7 @@ services:
     environment:
       <<: *meter-env
       MODEL: ${OPENAI_MODEL:-openai/gpt-6.1-sol}
-    volumes: ["./runs/openai/meter:/data"]
+    volumes: ["./runs/openai/meter-${PHASE:-evolve}:/data"]
     networks: [net-openai, egress]
 
   grader:
